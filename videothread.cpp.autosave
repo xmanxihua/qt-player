@@ -1,0 +1,57 @@
+#include "decodethread.h"
+#include "xffmpeg.h"
+#include <QDateTime>
+#include "xaudioplay.h"
+
+VideoThread::VideoThread()
+{
+
+}
+
+
+VideoThread::~VideoThread(){
+
+
+}
+bool isExit = false;
+void VideoThread::run() {
+    char* out = NULL;
+    while (!isExit) {
+
+        if (!XFFmpeg::getInstance()->isPlay){
+            msleep(10);
+            continue;
+        }
+
+        qint64 timestamp = QDateTime::currentDateTime().toMSecsSinceEpoch();
+        AVPacket pkt = XFFmpeg::getInstance()->read();
+        if (pkt.size == 0) {
+            printf("pkt.size == 0");
+            msleep(10);
+            continue;
+        }
+
+        if (pkt.stream_index == XFFmpeg::getInstance()->videoStream) {
+            AVFrame* frame = XFFmpeg::getInstance()->decode(&pkt);
+            if (frame){
+
+            }
+
+        }else if (pkt.stream_index == XFFmpeg::getInstance()->audioStream){
+
+            AVFrame* frame = XFFmpeg::getInstance()->decode(&pkt);
+            int len = 0;
+            XFFmpeg::getInstance()->toPCM(frame, &len, &out);
+            av_frame_free(&frame);
+
+            XAudioPlay::getInstance()->write(out,len);
+
+        }
+        av_packet_unref(&pkt);
+        /**if (XFFmpeg::getInstance()->fps > 0) {
+            msleep(1000/XFFmpeg::getInstance()->fps);
+        }*/
+
+        //printf("run time=%lld\n", QDateTime::currentDateTime().toMSecsSinceEpoch() - timestamp);
+    }
+}
